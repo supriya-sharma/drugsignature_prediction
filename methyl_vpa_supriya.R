@@ -167,12 +167,18 @@ topGenes_vpa6h_2_keep = topGenes_vpa6h_2[keep6,][1:5000,]
 
 write.csv(topGenes_vpa6h_2_keep, file="VPA_diff_Me_Unique_GeneList_5000.csv")
 
+#### read in gene list
+### reduce topGenes_
+
 ###########
 ### ASSIGN
 
 library(ASSIGN, "/usr2/faculty/wej/R/x86_64-unknown-linux-gnu-library/2.15")
 ##VPA_2h
-topGenes_unique <- read.csv("correlation_unique_500.csv", header = TRUE)
+topGenes_unique <- read.csv("correlation_unique_500_geneList.csv", header = TRUE)
+
+fit2 <- lmFit(topGenes_unique)
+fit2 <- eBayes(fit2)
 geneList_vpa_unique <- rownames(topGenes_unique)
 S_matrix <- -fit2$coefficients[topGenes_unique]
 B_vector <- fit2$coefficients[geneList_vpa_unique,1]+fit2$coefficients[geneList_vpa_unique,2]
