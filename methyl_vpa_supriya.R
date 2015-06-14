@@ -135,7 +135,7 @@ fit2 <- lmFit(vpa_cells_logit,design)
 fit2 <- eBayes(fit2)
 
 # 5000 gene selection
-nTop <- 5000
+nTop <- 5000  ## Maybe make this more like 2500?? That way you will get 5000 unique ones....
 topGenes_vpa2h_2 <-topTable(fit2,coef=2,number=nTop)
 topGenes_vpa6h_2 <- topTable(fit2, coef=3,number=nTop)
 
@@ -143,27 +143,29 @@ topGenes_vpa6h_2 <- topTable(fit2, coef=3,number=nTop)
        
 #  associate methylation sites with genes vpa2
 vpa2h <- topGenes_vpa2h_2[topGenes_vpa2h_2[,5]<0.05,]
-vpa2_id <- rownames(vpa2h)
+#vpa2_id <- rownames(vpa2h)
+vpa2_id <- vpa2h$ID
 vpa2_gene <- NULL
 for (i in 1:length(vpa2_id)){
   vpa2_gene <- c(vpa2_gene, strsplit(vpa2_id[i],split="_")[[1]][4])
 }
 vpa2_gene_uniq <- unique(vpa2_gene)
 keep2 = (vpa2_gene != "NONE") & (!duplicated(vpa2_gene))   ## Evan remove diuplicated probes and controle probes ("NONE")
-topGenes_vpa2h_2_keep = topGenes_vpa2h_2[keep2,][1:5000,]
+topGenes_vpa2h_2_keep = topGenes_vpa2h_2[keep2,][1:5000,]  ### Above you are selecting 5000 genes, then you remove the non-unique genes, then you try to select 5000 from the non-unique, but there are no longer 5000. So you only get like 1314 and the rest are NAs. You should probably go make the initial non-unique selection bigger than 5000
 
 #write.csv(topGenes_vpa2h_2, file="VPA_diff_Me_Unique_GeneList_5000.csv")
 
 # associate methylation sites with genes vpa6
 vpa6h <- topGenes_vpa6h_2[topGenes_vpa6h_2[,5]<0.05,]
-vpa6_id <- rownames(vpa6h)
+#vpa6_id <- rownames(vpa6h)
+vpa6_id <- vpa6h$ID
 vpa6_gene <- NULL
 for (i in 1:length(vpa6_id)){
   vpa6_gene <- c(vpa6_gene, strsplit(vpa6_id[i],split="_")[[1]][4])
 }
 vpa6_gene_uniq <- unique(vpa6_gene)
 keep6 = (vpa6_gene != "NONE") & (!duplicated(vpa6_gene))   ## Evan remove diuplicated probes and controle probes ("NONE")
-topGenes_vpa6h_2_keep = topGenes_vpa6h_2[keep6,][1:5000,]
+topGenes_vpa6h_2_keep = topGenes_vpa6h_2[keep6,][1:5000,]  ### see note above on the 5000....
 
 write.csv(topGenes_vpa6h_2_keep, file="VPA_diff_Me_Unique_GeneList_5000.csv")
 
@@ -174,22 +176,31 @@ library(ASSIGN, "/usr2/faculty/wej/R/x86_64-unknown-linux-gnu-library/2.15")
 ##VPA_2h
 
 topGenes_unique <- read.csv("correlation_unique_500_geneList.csv", header = TRUE)
-fit2 <- lmFit(topGenes_unique)
-fit2 <- eBayes(fit2)
-geneList_vpa_unique <- rownames(topGenes_unique)
-S_matrix <- -fit2$coefficients[topGenes_unique]
-B_vector <- fit2$coefficients[geneList_vpa_unique,1]+fit2$coefficients[geneList_vpa_unique,2]
+
+### Link exp/meth neg corr genes with limma result above:
+#get the probe names (from topGenes_vpa6h_2_keep) for the genes in the correlated list
+selected=NULL
+for (i in topGenes_vpa6h_2_keep$ID){
+  selected <- c(selected, strsplit(i,split="_")[[1]][4]%in%topGenes_unique$genes)
+}
+topCor=topGenes_vpa6h_2_keep$ID[selected]
+
+#fit2 <- lmFit(topGenes_unique)  ## I don't understand what you are trying to do here?! Why are you trying to fit a limma model on limma ouput? Limma needes a raw data matrix.
+#fit2 <- eBayes(fit2) ## Also, you have limma fit on all the probes above, why do you need to redo limma? Just select the right columns from the previous limma result.
+#geneList_vpa_unique <- rownames(topGenes_unique)
+S_matrix <- -fit2$coefficients[rownames(fit2$coefficients)%in%topCor,2]
+B_vector <- fit2$coefficients[rownames(fit2$coefficients)%in%topCor,1]+fit2$coefficients[rownames(fit2$coefficients)%in%topCor,2]
 Pi_matrix <- rep(0.95,nrow(topGenes_unique))
 
 ##VPA_6h
 
 geneList_vpa6h <- rownames(topGenes_vpa6h_2_keep)
-S_matrix <- -fit2$coefficients[geneList_vpa6h,2]
-B_vector <- fit2$coefficients[geneList_vpa6h,1]+fit2$coefficients[geneList_vpa6h,2]
-Pi_matrix <- rep(0.95,nrow(topGenes_vpa6h_2_keep))
+S_matrix <- -fit2$coefficients[rownames(fit2$coefficients)%in%topCor,3]
+B_vector <- fit2$coefficients[rownames(fit2$coefficients)%in%topCor,1]+fit2$coefficients[rownames(fit2$coefficients)%in%topCor,3]
+Pi_matrix <- rep(0.95,length(topCor))
 
 #TCGA
-testData_sub_TCGA <-met_combat[geneList_vpa6h,73:319]
+testData_sub_TCGA <-met_combat[topCor,73:319]
 testData_sub_TCGA[testData_sub_TCGA<0] = 0
 testData_sub_TCGA[testData_sub_TCGA>.998] = .998
 testData_sub_TCGA_logit <- log2((testData_sub_TCGA+0.001)/(1-(testData_sub_TCGA+0.001)))
