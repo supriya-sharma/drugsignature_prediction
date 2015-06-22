@@ -151,7 +151,7 @@ for (i in 1:length(vpa2_id)){
 }
 vpa2_gene_uniq <- unique(vpa2_gene)
 keep2 = (vpa2_gene != "NONE") & (!duplicated(vpa2_gene))   ## Evan remove diuplicated probes and controle probes ("NONE")
-topGenes_vpa2h_2_keep = topGenes_vpa2h_2[keep2,][1:5000,]
+topGenes_vpa2h_2_keep = topGenes_vpa2h_2[keep2,]
 
 #write.csv(topGenes_vpa2h_2, file="VPA_diff_Me_Unique_GeneList_5000.csv")
 
@@ -468,36 +468,31 @@ dev.off()
 
 ## gene expression analysis with top correlated genes
 
-       
+library(sva)
+
+expr <- read.table("finalMerged.txt",row.names="external_gene_id",header=T)
+expr2 <- expr[complete.cases(expr),]
+
+batch <- c(rep("cellLine",36),rep("tcga",247))
+expr_combat <- ComBat(dat=expr2, batch, mod=NULL,numCovs=NULL, par.prior=TRUE,prior.plots=FALSE)
+
+ 
 ###########
 ### ASSIGN
 library(ASSIGN, "/usr2/faculty/wej/R/x86_64-unknown-linux-gnu-library/2.15")
            
 topGenes_unique <- read.csv("correlation_unique_500_geneList.csv", header = TRUE)
-                           
-### Link exp/meth neg corr genes with limma result above:
-#get the probe names (from topGenes_vpa6h_2_keep) for the genes in the correlated list
 
-selected=NULL
-for (i in rownames(topGenes_vpa6h_2_keep)){
-selected <- c(selected, strsplit(i,split= "_")[[1]][4]%in%topGenes_unique$genes)
-}
-topCor=rownames(topGenes_vpa6h_2_keep)[selected]
-                           
-                                                 
-#TCGA
-                         
-###
-geneList_vpa <- rownames(topGenes_vpa6h_2_keep)
-S_matrix <- -fit2$coefficients[rownames(fit2$coefficients)%in%topCor,3]
-B_vector <- fit2$coefficients[rownames(fit2$coefficients)%in%topCor,1]+fit2$coefficients[rownames(fit2$coefficients)%in%topCor,3]
-Pi_matrix <- rep(0.95,length(S_matrix))
-                           
+geneList <- topGenes_unique[,1]
+S_matrix <- -fit2$coefficients[geneList,2]
+B_vector <- fit2$coefficients[geneList,1]+fit2$coefficients[geneList,2]
+Pi_matrix <- rep(0.95,nrow(S_matrix))                                                  
                            
 #TCGA
 
-testData_TCGA_sub <- expr_combat[topCor,37:283]
-                           
+testData_TCGA_sub <- expr_combat[geneList,37:283]
+ 
+
 #test4: adaptive_B=T, adaptive_S=T, mixture_beta=T
 mcmc.chain <- assign.mcmc(Y = testData_TCGA_sub , Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=T, adaptive_S=T, mixture_beta=T, p_beta = 0.5)
 mcmc.pos.mean4 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=T, adaptive_S=T,mixture_beta=T)
