@@ -251,8 +251,8 @@ testData_sub_TCGA_logit <- log2((testData_sub_TCGA+0.001)/(1-(testData_sub_TCGA+
 
 
 #test4: adaptive_B=T, adaptive_S=T, mixture_beta=T
-mcmc.chain <- assign.mcmc(Y = testData_sub_TCGA_logit , Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=T, adaptive_S=T, mixture_beta=T, p_beta = 0.5)
-mcmc.pos.mean4 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=T, adaptive_S=T,mixture_beta=T)
+mcmc.chain <- assign.mcmc(Y = testData_sub_TCGA_logit , Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=F, adaptive_S=F, mixture_beta=T, p_beta = 0.5)
+mcmc.pos.mean4 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=F, adaptive_S=F,mixture_beta=T)
 vpa_pa <- mcmc.pos.mean4$beta_pos
 ##############################################################################
 #xenograph
@@ -321,7 +321,7 @@ mcmc.chain <- assign.mcmc(Y = testData_sub_110p5_logit, Bg = B_vector, X = S_mat
 mcmc.pos.mean4 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=T, adaptive_S=T,mixture_beta=T)
 vpa_pa <- mcmc.pos.mean4$kappa_pos
 row.names(vpa_pa) <- names(testData_sub_TCGA)
-write.csv(vpa_pa, file="methylation_TCGA_all_500_topCor.csv") # csv file for all TCGA tumor-normal samples
+write.csv(vpa_pa, file="methylation_TCGA_all_500_topCor-nonadp.csv") # csv file for all TCGA tumor-normal samples
 
 
 # plots and tables
@@ -486,7 +486,7 @@ topGenes_unique <- read.csv("correlation_unique_500_geneList.csv", header = TRUE
 geneList <- topGenes_unique[,1]
 S_matrix <- -fit2$coefficients[geneList,2]
 B_vector <- fit2$coefficients[geneList,1]+fit2$coefficients[geneList,2]
-Pi_matrix <- rep(0.95,nrow(S_matrix))                                                  
+Pi_matrix <- rep(0.95,length(S_matrix))                                                  
                            
 #TCGA
 
@@ -494,12 +494,12 @@ testData_TCGA_sub <- expr_combat[geneList,37:283]
  
 
 #test4: adaptive_B=T, adaptive_S=T, mixture_beta=T
-mcmc.chain <- assign.mcmc(Y = testData_TCGA_sub , Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=T, adaptive_S=T, mixture_beta=T, p_beta = 0.5)
-mcmc.pos.mean4 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=T, adaptive_S=T,mixture_beta=T)
+mcmc.chain <- assign.mcmc(Y = testData_TCGA_sub , Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=F, adaptive_S=F, mixture_beta=T, p_beta = 0.5)
+mcmc.pos.mean4 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=F, adaptive_S=F,mixture_beta=T)
 vpa_pa <- mcmc.pos.mean4$beta_pos
                            
 row.names(vpa_pa) <- names(testData_sub_TCGA)
-write.csv(vpa_pa, file="expression_TCGA_all_supriya_topCor.csv") # csv file for all TCGA tumor-normal samples
+write.csv(vpa_pa, file="expression_TCGA_all_supriya_topCor_nonadp.csv") # csv file for all TCGA tumor-normal samples
                            
 # plots and tables
 label <- as.factor(c(rep("normal",32),rep("tumor",215)))
