@@ -73,7 +73,7 @@ topGenes_vpa6h_2_keep = topGenes_vpa6h_2[keep6,]
 write.csv(topGenes_vpa6h_2_keep, file="VPA_diff_Me_Unique_GeneList_5000.csv")
 
 
-topGenes_unique <- read.csv("correlation_unique_500_geneList.csv", header = TRUE)
+topGenes_unique <- read.csv("correlation_unique-vely_100.csv", header = TRUE)
 
 ### Link exp/meth neg corr genes with limma result above:
 #get the probe names (from topGenes_vpa6h_2_keep) for the genes in the correlated list
@@ -82,7 +82,7 @@ selected=NULL
 for (i in rownames(topGenes_vpa6h_2_keep)){
   selected <- c(selected, strsplit(i,split= "_")[[1]][4]%in%topGenes_unique$genes)
 }
-topCor=rownames(topGenes_vpa6h_2_keep)[selected]
+topCor=list(rownames(topGenes_vpa6h_2_keep)[selected])
 
 #TCGA
 
@@ -96,20 +96,24 @@ testData_sub_TCGA_logit <- log2((testData_sub_TCGA+0.001)/(1-(testData_sub_TCGA+
 library(ASSIGN, "/usr2/faculty/wej/R/x86_64-unknown-linux-gnu-library/2.15")
 
 
-assign.wrapper(trainingData=NULL, testData=testData_sub_TCGA_logit, trainingLabel=NULL, testLabel=NULL, geneList=topCor,n_sigGene=NULL, adaptive_B=TRUE, adaptive_S=TRUE, mixture_beta=TRUE, iter=2000, burn_in=1000)
+assign.wrapper(trainingData=NULL, testData=testData_sub_TCGA_logit, trainingLabel=NULL, testLabel=NULL, geneList=topCor,n_sigGene=NULL, adaptive_B=TRUE, adaptive_S=TRUE, mixture_beta=TRUE, outputDir="/restricted/projectnb/combat/genomemedicine/wrapper", iter=2000, burn_in=1000)
 
 ## gene expression analysis with top correlated gene
 
-expr <- read.table("finalMerged.txt",row.names="external_gene_id",header=T)
+expr <- read.table("UPCed_Expression_Matrix.txt",header=T)
 expr2 <- expr[complete.cases(expr),]
 
-batch <- c(rep("cellLine",36),rep("tcga",247))
-expr_combat <- ComBat(dat=expr2, batch, mod=NULL,numCovs=NULL, par.prior=TRUE,prior.plots=FALSE)
+#batch <- c(rep("cellLine",36),rep("tcga",247))
+#expr_combat <- ComBat(dat=expr2, batch, mod=NULL,numCovs=NULL, par.prior=TRUE,prior.plots=FALSE)
 
 #TCGA
 
-testData_sub_TCGA <- expr_combat[geneList,37:283]
+testData_sub_TCGA <-expr2
 
-assign.wrapper(trainingData=NULL, testData=testData_sub_TCGA, trainingLabel=NULL, testLabel=NULL, geneList=topCor, n_sigGene=NULL, adaptive_B=TRUE,
-               adaptive_S=TRUE, mixture_beta=TRUE, iter=2000, burn_in=1000)
+testData_sub_TCGA[testData_sub_TCGA<0] = 0
+testData_sub_TCGA[testData_sub_TCGA>.998] = .998
+testData_sub_TCGA_logit <- log2((testData_sub_TCGA+0.001)/(1-(testData_sub_TCGA+0.001)))
+
+assign.wrapper(trainingData=NULL, testData=testData_sub_TCGA_logit, trainingLabel=NULL, testLabel=NULL, geneList=topCor, n_sigGene=NULL, adaptive_B=TRUE,
+               adaptive_S=TRUE, mixture_beta=TRUE,outputDir="/restricted/projectnb/combat/genomemedicine/wrapper", iter=2000, burn_in=1000)
 
