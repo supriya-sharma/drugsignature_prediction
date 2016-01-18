@@ -219,8 +219,10 @@ topGenes_vpa6h_2_keep = topGenes_vpa6h_2[keep6,]
 write.csv(topGenes_vpa6h_2_keep, file="VPA_diff_Me_Unique_GeneList_5000.csv")
                            
 
-topGenes_unique <- read.csv("correlation_unique_500_geneList.csv", header = TRUE)
+topGenes_unique <- read.csv("correlation_unique-vely40.csv", header = TRUE)
                            
+
+
 ### Link exp/meth neg corr genes with limma result above:
 #get the probe names (from topGenes_vpa6h_2_keep) for the genes in the correlated list
 
@@ -228,20 +230,20 @@ selected=NULL
 for (i in rownames(topGenes_vpa6h_2_keep)){
 selected <- c(selected, strsplit(i,split= "_")[[1]][4]%in%topGenes_unique$genes)
 }
-topCor=rownames(topGenes_vpa6h_2_keep)[selected]
+topCor=list(rownames(topGenes_vpa6h_2_keep)[selected])
                            
-S_matrix <- -fit2$coefficients[rownames(fit2$coefficients)%in%topCor,2]
-B_vector <- fit2$coefficients[rownames(fit2$coefficients)%in%topCor,1]+fit2$coefficients[rownames(fit2$coefficients)%in%topCor,2]
-Pi_matrix <- rep(0.95,nrow(topGenes_unique))
+#S_matrix <- -fit2$coefficients[rownames(fit2$coefficients)%in%topCor,2]
+#B_vector <- fit2$coefficients[rownames(fit2$coefficients)%in%topCor,1]+fit2$coefficients[rownames(fit2$coefficients)%in%topCor,2]
+#Pi_matrix <- rep(0.95,nrow(topCor))
                            
 ##VPA_6h
                            
-geneList_vpa6h <- rownames(topGenes_vpa6h_2_keep)
-                           
-S_matrix <- -fit2$coefficients[rownames(fit2$coefficients)%in%topCor,3]
-B_vector <- fit2$coefficients[rownames(fit2$coefficients)%in%topCor,1]+fit2$coefficients[rownames(fit2$coefficients)%in%topCor,3]
-Pi_matrix <- rep(0.95,length(S_matrix))
-                           
+geneList <- topGenes_unique[,1]
+S_matrix <- -fit2$coefficients[geneList,1]
+#write.csv(S_matrix, file="S_matrix_exp.csv")
+B_vector <- fit2$coefficients[geneList,1]+fit2$coefficients[geneList,2]
+Pi_matrix <- rep(0.95,length(S_matrix))                                                
+                        
 #TCGA
                          
 testData_sub_TCGA <-met_combat[topCor,73:319]
@@ -251,9 +253,13 @@ testData_sub_TCGA_logit <- log2((testData_sub_TCGA+0.001)/(1-(testData_sub_TCGA+
 
 
 #test4: adaptive_B=T, adaptive_S=T, mixture_beta=T
-mcmc.chain <- assign.mcmc(Y = testData_sub_TCGA_logit , Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=F, adaptive_S=F, mixture_beta=T, p_beta = 0.5)
-mcmc.pos.mean4 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=F, adaptive_S=F,mixture_beta=T)
+mcmc.chain <- assign.mcmc(Y = testData_sub_TCGA_logit , Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=T, adaptive_S=T, mixture_beta=T, p_beta = 0.5)
+mcmc.pos.mean4 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=T, adaptive_S=T,mixture_beta=T)
 vpa_pa <- mcmc.pos.mean4$beta_pos
+
+row.names(vpa_pa) <- names(testData_sub_TCGA)
+write.csv(vpa_pa, file="methylation_TCGA_all_-ve100Corr.csv") # csv file for all TCGA tumor-normal samples
+
 ##############################################################################
 #xenograph
 testData_sub_xenograph <- met_combat[geneList_vpa2h,1:36]
@@ -289,13 +295,13 @@ testData_sub_TCGA_logit <- log2((testData_sub_TCGA+0.001)/(1-(testData_sub_TCGA+
 
 #xenograph
 testData_sub_xenograph <- met_combat[geneList_vpa6h,1:36]
-testData_sub_xenograph_logit <- log2((testData_sub_xenograph+0.001)/(1-(testData_sub_xenograph+0.001)))
+#testData_sub_xenograph_logit <- log2((testData_sub_xenograph+0.001)/(1-(testData_sub_xenograph+0.001)))
 
 #110p5
 xeno_110p5 <- testData_sub_xenograph[,c(seq(1,12,by=2),13:24)]
 xeno_110p5_vpa <- xeno_110p5[,c(grep("ck",names(xeno_110p5)),grep("vpa",names(xeno_110p5)))][,c(1,2,3,7,8,9)]
 testData_sub_110p5_logit <- log2((xeno_110p5+0.001)/(1-(xeno_110p5+0.001)))
-testData_sub_110p5_logit <- testData_sub_110p5_logit[,order(names(testData_sub_110p5_logit))]                          
+testData_sub_110p5_logit <- testData_sub_110p5_logit[,order(names(testData_sub_110p5_logit))]                         
 
 #320p2
 xeno_320p2 <- testData_sub_xenograph[,c(seq(2,12,by=2),25:36)]
@@ -304,8 +310,13 @@ xeno_320p2_vpa <- xeno_320p2[,c(grep("ck",names(xeno_320p2)),grep("vpa",names(xe
 testData_sub_320p2_logit <- log2((xeno_320p2+0.001)/(1-(xeno_320p2+0.001)))
 testData_sub_320p2_logit <- testData_sub_320p2_logit[,order(names(testData_sub_320p2_logit))]
 
+### ASSIGN Wrapper
+
+assign.wrapper(trainingData=NULL, testData=xeno_110p5, trainingLabel=NULL, testLabel=NULL, geneList=topCor,n_sigGene=NULL, adaptive_B=TRUE, adaptive_S=TRUE, mixture_beta=TRUE, outputDir="/restricted/projectnb/combat/genomemedicine/-ve40topcor", iter=2000, burn_in=1000)
+
+
 #test1: adaptive_B=F, adaptive_S=F, mixture_beta=F
-mcmc.chain <- assign.mcmc(Y = testData_sub_TCGA_logit, Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=F, adaptive_S=F, mixture_beta=F, p_beta = 0.5)
+mcmc.chain <- assign.mcmc(Y = xeno_110p5, Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=F, adaptive_S=F, mixture_beta=F, p_beta = 0.5)
 mcmc.pos.mean1 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=F, adaptive_S=F,mixture_beta=F)
 
 #test2: adaptive_B=T, adaptive_S=F, mixture_beta=F
@@ -320,7 +331,7 @@ mcmc.pos.mean3 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adapt
 mcmc.chain <- assign.mcmc(Y = testData_sub_110p5_logit, Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=T, adaptive_S=T, mixture_beta=T, p_beta = 0.5)
 mcmc.pos.mean4 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=T, adaptive_S=T,mixture_beta=T)
 vpa_pa <- mcmc.pos.mean4$kappa_pos
-row.names(vpa_pa) <- names(testData_sub_TCGA)
+row.names(vpa_pa) <- names(testData_sub_110p5_logit)
 write.csv(vpa_pa, file="methylation_TCGA_all_500_topCor-nonadp.csv") # csv file for all TCGA tumor-normal samples
 
 
@@ -356,9 +367,11 @@ rownames(coeff) <- names(testData_sub_logit)
 colnames(coeff) <- "vpa_6h_signature"
 write.csv(coeff,file="320p2_vpa6h_methylation_signature.csv")
 
-pdf("methylation_uni+Combat_110p5_vpa_200_6h.pdf")
-boxplot(mcmc.pos.mean4$kappa ~ label,ylab="vpa signature",main="110p5_200_vpa_2h_ Unique+Combat_methylation_signature.pdf")
+##mcmc.pos. <- read.csv("110p5_sig_topcor-ve40.csv", header=TRUE)
+pdf("methyl_110p5_vpa-ve40topcor.pdf")
+boxplot(mcmc.pos.mean4$kappa ~ label,ylab="vpa signature",main="110p5_methylation_signature.pdf")
 dev.off()                           
+
 
 pdf("methylation_320p2_50_vpa_6h.pdf")
 boxplot(mcmc.pos.mean4$kappa ~ label,ylab="vpa signature",main="320p2_50_vpa_6h_methylation_signature.pdf")
@@ -428,7 +441,7 @@ fit <- eBayes(fit)
 topGenes_vpa <-topTable(fit,coef=2,number=nrow(vpa.matrix))
 
                         
-# 2000 gene selection
+# 5000 gene selection
 nTop <- 5000
 topGenes_vpa <-topTable(fit,coef=2,number=nTop)
 write.csv(topGenes_vpa, file="vpa_diffExp_GeneList_5000.csv")
@@ -437,12 +450,15 @@ write.csv(topGenes_vpa, file="vpa_diffExp_GeneList_5000.csv")
 ###########
 ### ASSIGN
 library(ASSIGN, "/usr2/faculty/wej/R/x86_64-unknown-linux-gnu-library/2.15")
-##VPA_500
-geneList_vpa <- rownames(topGenes_vpa)
-S_matrix <- -fit2$coefficients[geneList_vpa,2]
-B_vector <- fit2$coefficients[geneList_vpa,1]+fit2$coefficients[geneList_vpa,2]
-Pi_matrix <- rep(0.95,nrow(topGenes_vpa))
 
+topGenes_unique <- read.csv("correlation_unique-vely.csv", header = TRUE)
+
+##VPA_500
+geneList_vpa <- topGenes_unique[,1]
+S_matrix <- -fit2$coefficients[geneList_vpa, 1]
+#write.csv(S_matrix, file= "S_matrix_exp_topGenes_vpa.csv")
+B_vector <- fit2$coefficients[geneList_vpa,1]+fit2$coefficients[geneList_vpa,2]
+Pi_matrix <- rep(0.95,nrow(topGenes_unique))
 
 #TCGA
 geneList <- rownames(topGenes)[1:nTop]
@@ -481,25 +497,32 @@ expr_combat <- ComBat(dat=expr2, batch, mod=NULL,numCovs=NULL, par.prior=TRUE,pr
 ### ASSIGN
 library(ASSIGN, "/usr2/faculty/wej/R/x86_64-unknown-linux-gnu-library/2.15")
            
-topGenes_unique <- read.csv("correlation_unique_500_geneList.csv", header = TRUE)
+topGenes_unique <- read.csv("correlation_unique-vely.csv", header = TRUE)
 
 geneList <- topGenes_unique[,1]
-S_matrix <- -fit2$coefficients[geneList,2]
+S_matrix <- -fit2$coefficients[geneList,1]
+#write.csv(S_matrix, file="S_matrix_exp.csv")
 B_vector <- fit2$coefficients[geneList,1]+fit2$coefficients[geneList,2]
 Pi_matrix <- rep(0.95,length(S_matrix))                                                  
-                           
+
 #TCGA
 
-testData_TCGA_sub <- expr_combat[geneList,37:283]
+#testData_TCGA_sub <- expr_combat[geneList,37:283]
  
+expr <- read.table("UPCed_Expression_Matrix.txt",header=T)
+
+expr2 <- expr[complete.cases(expr),]
+
+testData_sub_TCGA_UPC <-expr2
+
 
 #test4: adaptive_B=T, adaptive_S=T, mixture_beta=T
-mcmc.chain <- assign.mcmc(Y = testData_TCGA_sub , Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=F, adaptive_S=F, mixture_beta=T, p_beta = 0.5)
-mcmc.pos.mean4 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=F, adaptive_S=F,mixture_beta=T)
-vpa_pa <- mcmc.pos.mean4$beta_pos
+mcmc.chain <- assign.mcmc(Y = testData_sub_TCGA_UPC , Bg = B_vector, X = S_matrix, Delta_prior_p = Pi_matrix, iter=2000, adaptive_B=T, adaptive_S=T, mixture_beta=T, p_beta = 0.5)
+mcmc.pos.mean4 <- assign.summary(test=mcmc.chain, burn_in=1000, iter=2000, adaptive_B=T, adaptive_S=T,mixture_beta=T)
+vpa_pa_UPC <- mcmc.pos.mean4$beta_pos
                            
-row.names(vpa_pa) <- names(testData_sub_TCGA)
-write.csv(vpa_pa, file="expression_TCGA_all_supriya_topCor_nonadp.csv") # csv file for all TCGA tumor-normal samples
+row.names(vpa_pa_UPC) <- names(testData_sub_TCGA_UPC)
+write.csv(vpa_pa, file="exprUPC_TCGA_unique-veTopCor.csv") # csv file for all TCGA tumor-normal samples
                            
 # plots and tables
 label <- as.factor(c(rep("normal",32),rep("tumor",215)))
