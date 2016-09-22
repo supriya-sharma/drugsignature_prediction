@@ -1,22 +1,4 @@
-icbp_assign <- read.table("icbpASSIGN.csv",sep=",",header=T)
 
-corrIC50_TSA_noTrainingData <- cor(icbp_assign[,2], icbp_assign[,3], method="spearman")
-
-corrIC50_TSA_TrainingData <- cor(icbp_assign[,3], icbp_assign[,4], method="spearman")
-
-corrIC50_TSA_NewtrainingLabel <- cor(icbp_assign[,3], icbp_assign[,5], method="spearman")
-
-corrIC50_VPA_noTrainingData <- cor(icbp_assign[,6], icbp_assign[,7], method="spearman")
-
-corrIC50_VPA_TrainingData <- cor(icbp_assign[,7], icbp_assign[,8], method="spearman")
-
-corrIC50_VPA_NewtrainingLabel <- cor(icbp_assign[,7], icbp_assign[,9], method="spearman")
-
-corrIC50_SAHA_noTrainingData <- cor(icbp_assign[,10], icbp_assign[,11], method="spearman")
-
-corrIC50_SAHA_TrainingData <- cor(icbp_assign[,11], icbp_assign[,12], method="spearman")
-
-corrIC50_SAHA_NewtrainingLabel <- cor(icbp_assign[,11], icbp_assign[,13], method="spearman")
 
 ### barplots for overlapping cell lines in ICBP with Andrea's cell line
 icbp_subtype <- read.csv(file="icbp_subtype.csv",header=TRUE)
